@@ -114,7 +114,7 @@
     "fieldGroups": {
         "organization": "Organisasi",
         "bookInfo": "",
-        "series": "Serial",
+        "series": "Seri",
         "dates": "Tanggal",
         "ratingsReviews": "",
         "tagsMoods": "",
@@ -201,7 +201,7 @@
     "metadataFieldGroups": {
         "bookInfo": "",
         "authorsCategories": "",
-        "series": "Serial",
+        "series": "Seri",
         "identifiers": "",
         "contentClassification": "",
         "ratings": "Rating",
