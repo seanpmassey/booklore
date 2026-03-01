@@ -162,7 +162,7 @@
             "subtitle": "",
             "authors": "",
             "seriesNumber": "25",
-            "published": "{Diterbitkan:yyyy-MM-dd}",
+            "published": "{Published:yyyy-MM-dd}",
             "publisher": "",
             "language": "en",
             "seriesTotal": "50",
