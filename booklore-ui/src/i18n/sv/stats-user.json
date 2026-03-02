@@ -148,7 +148,7 @@
         "axisAvgDuration": "Snittvaraktighet (min)",
         "sessions": "Sessioner",
         "avgDurationMin": "Snittvaraktighet (min)",
-        "tooltipSessions": "{{ label }}: {{ value }} session",
+        "tooltipSessions": "{{ label }}: {{ value }} lästillfälle",
         "tooltipSessionsPlural": "{{ label }}: {{ value }} sessioner",
         "tooltipMin": "{{ label }}: {{ value }} min"
     },
@@ -195,7 +195,7 @@
             "patient": "Talmodig",
             "social": "Social",
             "nostalgic": "Nostalgisk",
-            "ambitious": "Ambitious"
+            "ambitious": "Ambitiös"
         },
         "descriptions": {
             "adventurous": {
@@ -251,7 +251,7 @@
         "tooltipDefaultDescription": "Ditt lasvanemonster",
         "habits": {
             "consistency": "Konsekvens",
-            "multitasking": "Multitasking",
+            "multitasking": "Mångsysslare",
             "completionism": "Fullforandegrad",
             "exploration": "Utforskande",
             "organization": "Organisation",
