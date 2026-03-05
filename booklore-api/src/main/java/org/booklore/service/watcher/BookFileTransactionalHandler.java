@@ -8,6 +8,7 @@ import org.booklore.model.entity.LibraryEntity;
 import org.booklore.model.entity.LibraryPathEntity;
 import org.booklore.model.enums.BookFileExtension;
 import org.booklore.model.enums.BookFileType;
+import org.booklore.model.enums.LibraryOrganizationMode;
 import org.booklore.model.websocket.LogNotification;
 import org.booklore.model.websocket.Topic;
 import org.booklore.repository.BookAdditionalFileRepository;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -68,7 +70,13 @@ public class BookFileTransactionalHandler {
             return;
         }
 
-        BookEntity filelessMatch = findMatchingFilelessBook(libraryEntity, fileName, libraryPathEntity);
+        var mode = libraryEntity.getOrganizationMode() != null
+                ? libraryEntity.getOrganizationMode() : LibraryOrganizationMode.AUTO_DETECT;
+
+        BookEntity filelessMatch = (mode == LibraryOrganizationMode.AUTO_DETECT)
+                ? findMatchingFilelessBook(libraryEntity, fileName, libraryPathEntity)
+                : findExactFilelessBook(libraryEntity, fileName, libraryPathEntity);
+
         if (filelessMatch != null) {
             if (filelessMatch.getLibraryPath() == null) {
                 filelessMatch.setLibraryPath(libraryPathEntity);
@@ -80,7 +88,22 @@ public class BookFileTransactionalHandler {
             return;
         }
 
-        BookEntity matchingBook = findMatchingBook(libraryPathEntity.getId(), fileSubPath, fileName);
+        BookEntity matchingBook = null;
+
+        if (mode == LibraryOrganizationMode.BOOK_PER_FILE) {
+            // BOOK_PER_FILE: never attach to existing books
+        } else if (mode == LibraryOrganizationMode.BOOK_PER_FOLDER) {
+            matchingBook = findBookInSameFolder(libraryPathEntity.getId(), fileSubPath);
+            if (matchingBook == null) {
+                BookFileType fileType = BookFileExtension.fromFileName(fileName)
+                        .map(BookFileExtension::getType).orElse(null);
+                if (fileType == BookFileType.AUDIOBOOK) {
+                    matchingBook = findNearestAncestorBookWithEbook(libraryPathEntity.getId(), fileSubPath);
+                }
+            }
+        } else {
+            matchingBook = findMatchingBook(libraryPathEntity.getId(), fileSubPath, fileName);
+        }
 
         if (matchingBook != null) {
             autoAttachFile(matchingBook, fileName, fileSubPath, path);
@@ -156,6 +179,77 @@ public class BookFileTransactionalHandler {
                 String bookTitle = BookFileGroupingUtils.extractGroupingKey(book.getMetadata().getTitle());
                 double similarity = BookFileGroupingUtils.calculateSimilarity(fileBaseName, bookTitle);
                 if (similarity >= FILELESS_MATCH_THRESHOLD) {
+                    return book;
+                }
+            }
+        }
+        return null;
+    }
+
+    private BookEntity findExactFilelessBook(LibraryEntity library, String fileName, LibraryPathEntity fileLibraryPath) {
+        List<BookEntity> filelessBooks = bookRepository.findFilelessBooksByLibraryId(library.getId());
+        String fileBaseName = BookFileGroupingUtils.extractGroupingKey(fileName);
+
+        for (BookEntity book : filelessBooks) {
+            if (book.getLibraryPath() != null && !book.getLibraryPath().getId().equals(fileLibraryPath.getId())) {
+                continue;
+            }
+
+            if (book.getMetadata() != null && book.getMetadata().getTitle() != null) {
+                String bookTitle = BookFileGroupingUtils.extractGroupingKey(book.getMetadata().getTitle());
+                if (fileBaseName.equals(bookTitle)) {
+                    return book;
+                }
+            }
+        }
+        return null;
+    }
+
+    private BookEntity findBookInSameFolder(Long libraryPathId, String fileSubPath) {
+        if (fileSubPath == null || fileSubPath.isEmpty()) {
+            return null;
+        }
+
+        List<BookEntity> booksInDirectory = bookRepository.findAllByLibraryPathIdAndFileSubPath(libraryPathId, fileSubPath);
+        List<BookEntity> activeBooks = booksInDirectory.stream()
+                .filter(book -> book.getDeleted() == null || !book.getDeleted())
+                .filter(BookEntity::hasFiles)
+                .toList();
+
+        if (activeBooks.isEmpty()) {
+            return null;
+        }
+
+        if (activeBooks.size() == 1) {
+            return activeBooks.getFirst();
+        }
+
+        return activeBooks.stream()
+                .max(Comparator.comparingLong(book -> book.getBookFiles() != null ? book.getBookFiles().size() : 0))
+                .orElse(null);
+    }
+
+    private BookEntity findNearestAncestorBookWithEbook(Long libraryPathId, String subPath) {
+        String current = subPath;
+        while (true) {
+            int lastSep = current.lastIndexOf('/');
+            if (lastSep == -1) {
+                lastSep = current.lastIndexOf('\\');
+            }
+            if (lastSep <= 0) {
+                break;
+            }
+            current = current.substring(0, lastSep);
+
+            List<BookEntity> booksAtLevel = bookRepository.findAllByLibraryPathIdAndFileSubPath(libraryPathId, current);
+            for (BookEntity book : booksAtLevel) {
+                if (book.getDeleted() != null && book.getDeleted()) {
+                    continue;
+                }
+                if (book.getBookFiles() != null && book.getBookFiles().stream()
+                        .anyMatch(bf -> bf.getBookType() != BookFileType.AUDIOBOOK)) {
+                    log.debug("BOOK_PER_FOLDER: Audio absorption matched to ancestor book id={} at '{}'",
+                            book.getId(), current);
                     return book;
                 }
             }

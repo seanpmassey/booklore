@@ -96,6 +96,9 @@ public class LibraryService {
         if (request.getMetadataSource() != null) {
             library.setMetadataSource(request.getMetadataSource());
         }
+        if (request.getOrganizationMode() != null) {
+            library.setOrganizationMode(request.getOrganizationMode());
+        }
 
         Set<String> currentPaths = library.getLibraryPaths().stream()
                 .map(LibraryPathEntity::getPath)
@@ -184,6 +187,7 @@ public class LibraryService {
                 .formatPriority(request.getFormatPriority())
                 .allowedFormats(request.getAllowedFormats())
                 .metadataSource(request.getMetadataSource())
+                .organizationMode(request.getOrganizationMode())
                 .users(List.of(user.get()))
                 .build();
 

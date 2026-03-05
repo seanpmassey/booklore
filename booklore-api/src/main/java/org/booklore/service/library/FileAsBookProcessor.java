@@ -114,14 +114,14 @@ public class FileAsBookProcessor {
         List<BookFileType> formatPriority = libraryEntity.getFormatPriority();
         return group.stream()
                 .filter(f -> f.getBookFileType() != null)
-                .min(Comparator.comparingInt(f -> {
+                .min(Comparator.<LibraryFile, Integer>comparing(f -> {
                     BookFileType bookFileType = f.getBookFileType();
                     if (formatPriority != null && !formatPriority.isEmpty()) {
                         int index = formatPriority.indexOf(bookFileType);
                         return index >= 0 ? index : Integer.MAX_VALUE;
                     }
                     return bookFileType.ordinal();
-                }));
+                }).thenComparing(LibraryFile::getFileName));
     }
 
     private void createAdditionalBookFile(BookEntity bookEntity, LibraryFile file) {

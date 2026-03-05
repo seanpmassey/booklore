@@ -3,12 +3,15 @@ package org.booklore.service.watcher;
 import org.booklore.exception.ApiError;
 import org.booklore.model.entity.LibraryEntity;
 import org.booklore.model.entity.LibraryPathEntity;
+import org.booklore.model.dto.settings.LibraryFile;
 import org.booklore.model.enums.BookFileExtension;
 import org.booklore.model.enums.BookFileType;
+import org.booklore.model.enums.LibraryOrganizationMode;
 import org.booklore.model.enums.PermissionType;
 import org.booklore.model.websocket.Topic;
 import org.booklore.repository.LibraryRepository;
 import org.booklore.service.NotificationService;
+import org.booklore.service.library.LibraryProcessingService;
 import org.booklore.util.FileUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -37,6 +40,7 @@ public class LibraryFileEventProcessor {
     private final LibraryRepository libraryRepository;
     private final BookFileTransactionalHandler bookFileTransactionalHandler;
     private final BookFilePersistenceService bookFilePersistenceService;
+    private final LibraryProcessingService libraryProcessingService;
     private final NotificationService notificationService;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -193,7 +197,20 @@ public class LibraryFileEventProcessor {
     private void handleFolderCreate(LibraryEntity library, Path folderPath) {
         log.info("[FOLDER_CREATE] '{}'", folderPath);
 
-        // Check if folder is a folder-based audiobook (2+ audio files, no ebook files)
+        var mode = library.getOrganizationMode() != null
+                ? library.getOrganizationMode() : LibraryOrganizationMode.AUTO_DETECT;
+
+        if (mode == LibraryOrganizationMode.BOOK_PER_FILE) {
+            processFilesInFolderIndividually(library, folderPath);
+            return;
+        }
+
+        if (mode == LibraryOrganizationMode.BOOK_PER_FOLDER) {
+            processFilesInFolderAsOneBook(library, folderPath);
+            return;
+        }
+
+        // AUTO_DETECT: existing audiobook folder detection logic
         FolderAnalysis analysis = analyzeFolderForAudiobook(folderPath);
 
         if (analysis.isFolderBasedAudiobook()) {
@@ -201,7 +218,6 @@ public class LibraryFileEventProcessor {
                     folderPath.getFileName(), analysis.audioFileCount());
             try {
                 bookFileTransactionalHandler.handleNewFolderAudiobook(library.getId(), folderPath);
-                // Clear any tracked files inside this folder - they're now part of the folder audiobook
                 int cleared = 0;
                 var iterator = filesFromPendingFolder.iterator();
                 while (iterator.hasNext()) {
@@ -217,40 +233,95 @@ public class LibraryFileEventProcessor {
                 log.warn("[ERROR] Processing folder audiobook '{}': {}", folderPath, e.getMessage());
             }
         } else {
-            // Not a folder-based audiobook - process tracked files individually
-            var trackedFiles = filesFromPendingFolder.stream()
-                    .filter(p -> p.startsWith(folderPath))
+            processTrackedAndWalkedFiles(library, folderPath);
+        }
+    }
+
+    private void processFilesInFolderIndividually(LibraryEntity library, Path folderPath) {
+        clearTrackedFilesFor(folderPath);
+        try (var stream = Files.walk(folderPath)) {
+            stream.filter(Files::isRegularFile)
                     .filter(p -> isBookFile(p.getFileName().toString()))
-                    .toList();
+                    .forEach(p -> {
+                        try {
+                            bookFileTransactionalHandler.handleNewBookFile(library.getId(), p);
+                        } catch (Exception e) {
+                            log.warn("[ERROR] Processing file '{}': {}", p, e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+            log.warn("[ERROR] Walking folder '{}': {}", folderPath, e.getMessage());
+        }
+    }
 
-            if (!trackedFiles.isEmpty()) {
-                log.info("[FOLDER_CREATE] Processing {} tracked files individually", trackedFiles.size());
-                for (Path filePath : trackedFiles) {
-                    try {
-                        bookFileTransactionalHandler.handleNewBookFile(library.getId(), filePath);
-                    } catch (Exception e) {
-                        log.warn("[ERROR] Processing tracked file '{}': {}", filePath, e.getMessage());
-                    }
-                    filesFromPendingFolder.remove(filePath);
+    private void processFilesInFolderAsOneBook(LibraryEntity library, Path folderPath) {
+        clearTrackedFilesFor(folderPath);
+
+        String libraryPath = bookFilePersistenceService.findMatchingLibraryPath(library, folderPath);
+        LibraryPathEntity libPathEntity = bookFilePersistenceService.getLibraryPathEntityForFile(library, libraryPath);
+
+        List<LibraryFile> libraryFiles = new ArrayList<>();
+        try (var stream = Files.walk(folderPath)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> isBookFile(p.getFileName().toString()))
+                    .forEach(p -> {
+                        String fileName = p.getFileName().toString();
+                        var ext = BookFileExtension.fromFileName(fileName);
+                        if (ext.isPresent()) {
+                            libraryFiles.add(LibraryFile.builder()
+                                    .libraryEntity(library)
+                                    .libraryPathEntity(libPathEntity)
+                                    .fileSubPath(FileUtils.getRelativeSubPath(libPathEntity.getPath(), p))
+                                    .fileName(fileName)
+                                    .bookFileType(ext.get().getType())
+                                    .build());
+                        }
+                    });
+        } catch (IOException e) {
+            log.warn("[ERROR] Walking folder '{}': {}", folderPath, e.getMessage());
+        }
+
+        if (!libraryFiles.isEmpty()) {
+            libraryProcessingService.processLibraryFiles(libraryFiles, library);
+        }
+    }
+
+    private void processTrackedAndWalkedFiles(LibraryEntity library, Path folderPath) {
+        var trackedFiles = filesFromPendingFolder.stream()
+                .filter(p -> p.startsWith(folderPath))
+                .filter(p -> isBookFile(p.getFileName().toString()))
+                .toList();
+
+        if (!trackedFiles.isEmpty()) {
+            log.info("[FOLDER_CREATE] Processing {} tracked files individually", trackedFiles.size());
+            for (Path filePath : trackedFiles) {
+                try {
+                    bookFileTransactionalHandler.handleNewBookFile(library.getId(), filePath);
+                } catch (Exception e) {
+                    log.warn("[ERROR] Processing tracked file '{}': {}", filePath, e.getMessage());
                 }
-            }
-
-            // Also walk the folder for any files that weren't tracked (e.g., existing files)
-            try (var stream = Files.walk(folderPath)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(p -> isBookFile(p.getFileName().toString()))
-                        .filter(p -> !trackedFiles.contains(p)) // Skip already processed tracked files
-                        .forEach(p -> {
-                            try {
-                                bookFileTransactionalHandler.handleNewBookFile(library.getId(), p);
-                            } catch (Exception e) {
-                                log.warn("[ERROR] Processing file '{}': {}", p, e.getMessage());
-                            }
-                        });
-            } catch (IOException e) {
-                log.warn("[ERROR] Walking folder '{}': {}", folderPath, e.getMessage());
+                filesFromPendingFolder.remove(filePath);
             }
         }
+
+        try (var stream = Files.walk(folderPath)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> isBookFile(p.getFileName().toString()))
+                    .filter(p -> !trackedFiles.contains(p))
+                    .forEach(p -> {
+                        try {
+                            bookFileTransactionalHandler.handleNewBookFile(library.getId(), p);
+                        } catch (Exception e) {
+                            log.warn("[ERROR] Processing file '{}': {}", p, e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+            log.warn("[ERROR] Walking folder '{}': {}", folderPath, e.getMessage());
+        }
+    }
+
+    private void clearTrackedFilesFor(Path folderPath) {
+        filesFromPendingFolder.removeIf(p -> p.startsWith(folderPath));
     }
 
     private FolderAnalysis analyzeFolderForAudiobook(Path folderPath) {
