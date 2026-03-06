@@ -516,13 +516,12 @@ class FileUtilsTest {
     }
 
     @Test
-    void testIsSeriesFolder_noExtension_returnsTrue() {
-        // Files without dots in the name (no extension confusion)
+    void testIsSeriesFolder_noExtension_returnsFalse() {
         List<Path> files = List.of(
                 Path.of("The Lightning Thief"),
                 Path.of("The Sea of Monsters")
         );
-        assertTrue(FileUtils.isSeriesFolder(files));
+        assertFalse(FileUtils.isSeriesFolder(files));
     }
 
     @Test
@@ -565,6 +564,27 @@ class FileUtilsTest {
                 Path.of("2. Prince Caspian.m4b")
         );
         assertTrue(FileUtils.isSeriesFolder(files));
+    }
+
+    @Test
+    void testIsSeriesFolder_descriptiveChapterNames_returnsFalse() {
+        List<Path> files = List.of(
+                Path.of("CH01 THE BOY WHO LIVED.mp3"),
+                Path.of("CH02 THE VANISHING GLASS.mp3"),
+                Path.of("CH03 THE LETTERS FROM NO ONE.mp3"),
+                Path.of("CH04 THE KEEPER OF THE KEYS.mp3")
+        );
+        assertFalse(FileUtils.isSeriesFolder(files));
+    }
+
+    @Test
+    void testIsSeriesFolder_numberedChaptersWithTitles_returnsFalse() {
+        List<Path> files = List.of(
+                Path.of("Suzanne Collins - Catching Fire 001.mp3"),
+                Path.of("Suzanne Collins - Catching Fire 002.mp3"),
+                Path.of("Suzanne Collins - Catching Fire 003.mp3")
+        );
+        assertFalse(FileUtils.isSeriesFolder(files));
     }
 
     @Test

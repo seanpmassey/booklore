@@ -101,11 +101,18 @@ public class BookGroupingService {
                 String key = pathId + "::" + file.getFileName();
                 result.computeIfAbsent(key, k -> new ArrayList<>()).add(file);
             } else if (file.getBookFileType() == BookFileType.AUDIOBOOK) {
-                String ancestorKey = findNearestEbookAncestor(pathId, subPath, ebookFolders);
+                // Folder-based audiobook entries represent a collapsed directory (e.g., subPath="Author",
+                // fileName="audiobook-folder"). Their subPath points to the parent because getRelativeSubPath
+                // takes .getParent() (designed for files, not directories). Reconstruct the actual folder path
+                // so sibling audiobook folders stay separate and absorption searches from the correct level.
+                String effectiveSubPath = file.isFolderBased()
+                        ? subPath + "/" + file.getFileName()
+                        : subPath;
+                String ancestorKey = findNearestEbookAncestor(pathId, effectiveSubPath, ebookFolders);
                 if (ancestorKey != null) {
                     result.computeIfAbsent(ancestorKey, k -> new ArrayList<>()).add(file);
                 } else {
-                    String key = pathId + ":" + subPath;
+                    String key = pathId + ":" + effectiveSubPath;
                     result.computeIfAbsent(key, k -> new ArrayList<>()).add(file);
                 }
             } else {
