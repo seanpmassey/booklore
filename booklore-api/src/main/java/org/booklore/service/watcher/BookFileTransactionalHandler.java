@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +48,7 @@ public class BookFileTransactionalHandler {
     private final LibraryRepository libraryRepository;
     private final BookRepository bookRepository;
     private final BookAdditionalFileRepository bookAdditionalFileRepository;
+    private final PendingDeletionPool pendingDeletionPool;
 
     @Transactional()
     public void handleNewBookFile(long libraryId, Path path) {
@@ -61,8 +63,52 @@ public class BookFileTransactionalHandler {
         LibraryPathEntity libraryPathEntity = bookFilePersistenceService.getLibraryPathEntityForFile(libraryEntity, libraryPath);
         String fileSubPath = FileUtils.getRelativeSubPath(libraryPathEntity.getPath(), path);
 
+        Optional<BookFileEntity> existingAtPath = bookFilePersistenceService
+                .findBookFileByLibraryPathSubPathAndFileName(libraryPathEntity.getId(), fileSubPath, fileName);
+        if (existingAtPath.isPresent()) {
+            BookFileEntity existing = existingAtPath.get();
+            BookEntity existingBook = existing.getBook();
+            boolean wasDeleted = Boolean.TRUE.equals(existingBook.getDeleted());
+            String existingHash = existing.getCurrentHash();
+            String currentHash = FileFingerprint.generateHash(path);
+
+            if (wasDeleted) {
+                pendingDeletionPool.matchByHash(existingHash);
+                existingBook.setDeleted(false);
+                existingBook.setDeletedAt(null);
+                existing.setCurrentHash(currentHash);
+                bookFilePersistenceService.save(existingBook);
+                log.info("[CREATE] File '{}' restored deleted book id={}", filePath, existingBook.getId());
+                notificationService.sendMessageToPermissions(Topic.LOG, LogNotification.info("Finished processing file: " + filePath), Set.of(ADMIN, MANAGE_LIBRARY));
+                return;
+            }
+
+            pendingDeletionPool.cancelByPath(path);
+
+            if (currentHash.equals(existingHash)) {
+                log.debug("[CREATE] File '{}' unchanged (same hash), skipping", filePath);
+                notificationService.sendMessageToPermissions(Topic.LOG, LogNotification.info("Finished processing file: " + filePath), Set.of(ADMIN, MANAGE_LIBRARY));
+                return;
+            }
+            existing.setCurrentHash(currentHash);
+            bookFilePersistenceService.save(existingBook);
+            log.info("[CREATE] File '{}' content changed, updated hash", filePath);
+            notificationService.sendMessageToPermissions(Topic.LOG, LogNotification.info("Finished processing file: " + filePath), Set.of(ADMIN, MANAGE_LIBRARY));
+            return;
+        }
+
         String currentHash = FileFingerprint.generateHash(path);
-        Optional<BookEntity> existingByHash = bookRepository.findByCurrentHash(currentHash);
+
+        Optional<PendingDeletionPool.MatchResult> poolMatch = pendingDeletionPool.matchByHash(currentHash);
+        if (poolMatch.isPresent()) {
+            var match = poolMatch.get();
+            pendingDeletionPool.recoverBook(match, libraryPathEntity, fileSubPath, fileName, currentHash);
+            log.info("[CREATE] File '{}' matched pending deletion, recovered book id={}", filePath, match.book().bookId());
+            notificationService.sendMessageToPermissions(Topic.LOG, LogNotification.info("Finished processing file: " + filePath), Set.of(ADMIN, MANAGE_LIBRARY));
+            return;
+        }
+
+        Optional<BookEntity> existingByHash = bookRepository.findByCurrentHashIncludingRecentlyDeleted(currentHash, Instant.now().minus(60, ChronoUnit.SECONDS));
         if (existingByHash.isPresent()) {
             bookFilePersistenceService.updatePathIfChanged(existingByHash.get(), libraryEntity, path, currentHash);
             log.info("[CREATE] File '{}' recognized as moved file, updated existing book's path", filePath);
@@ -140,6 +186,18 @@ public class BookFileTransactionalHandler {
         LibraryPathEntity libraryPathEntity = bookFilePersistenceService.getLibraryPathEntityForFile(libraryEntity, libraryPath);
         String fileSubPath = FileUtils.getRelativeSubPath(libraryPathEntity.getPath(), folderPath);
 
+        String folderHash = FileFingerprint.generateFolderHash(folderPath);
+        Optional<PendingDeletionPool.MatchResult> poolMatch = pendingDeletionPool.matchByHash(folderHash);
+        if (poolMatch.isPresent()) {
+            var match = poolMatch.get();
+            pendingDeletionPool.recoverBook(match, libraryPathEntity, fileSubPath, folderName, folderHash);
+            log.info("[CREATE] Folder audiobook '{}' matched pending deletion, recovered book id={}",
+                    folderName, match.book().bookId());
+            notificationService.sendMessageToPermissions(Topic.LOG,
+                    LogNotification.info("Finished processing folder audiobook: " + folderPath), Set.of(ADMIN, MANAGE_LIBRARY));
+            return;
+        }
+
         BookEntity matchingBook = findMatchingBookForFolderAudiobook(libraryPathEntity.getId(), fileSubPath, folderName);
 
         if (matchingBook != null) {
@@ -206,7 +264,7 @@ public class BookFileTransactionalHandler {
     }
 
     private BookEntity findBookInSameFolder(Long libraryPathId, String fileSubPath) {
-        if (fileSubPath == null || fileSubPath.isEmpty()) {
+        if (fileSubPath == null) {
             return null;
         }
 
@@ -258,7 +316,7 @@ public class BookFileTransactionalHandler {
     }
 
     private BookEntity findMatchingBook(Long libraryPathId, String fileSubPath, String fileName) {
-        if (fileSubPath == null || fileSubPath.isEmpty()) {
+        if (fileSubPath == null) {
             return null;
         }
 
