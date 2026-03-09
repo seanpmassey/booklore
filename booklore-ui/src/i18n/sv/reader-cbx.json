@@ -41,7 +41,8 @@
         "toggleZoom": "Växla zoom (anpassa sida / verklig storlek)",
         "doubleTap": "Dubbeltryck",
         "toggleSlideshow": "Växla bildspel / automatisk uppspelning",
-        "showHelpDialog": "Visa denna hjälpdialog"
+        "showHelpDialog": "Visa denna hjälpdialog",
+        "toggleMagnifier": "Växla förstoringsglas"
     },
     "footer": {
         "prevBook": "Föreg. bok",
