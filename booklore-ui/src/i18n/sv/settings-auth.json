@@ -25,9 +25,9 @@
         "providerPlaceholder": "t.ex. Authentik, Keycloak",
         "clientId": "Klient-ID",
         "clientIdPlaceholder": "Ditt OIDC-klient-ID",
-        "clientSecret": "",
-        "clientSecretPlaceholder": "",
-        "clientSecretHint": "",
+        "clientSecret": "Klientnyckel",
+        "clientSecretPlaceholder": "Din OIDC klientnyckel",
+        "clientSecretHint": "Krävs för konfidentiella klienter. Lämna tomt för offentliga klienter som endast använder PKCE.",
         "issuerUri": "Utfärdar-URI",
         "issuerPlaceholder": "t.ex. https://auth.example.com/realms/booklore",
         "scope": "Scope",
@@ -39,7 +39,14 @@
         "emailClaim": "E-post-claim",
         "emailPlaceholder": "t.ex. email",
         "nameClaim": "Visningsnamn-claim",
-        "namePlaceholder": "t.ex. name"
+        "namePlaceholder": "t.ex. name",
+        "groupsClaim": "Gruppanspråk",
+        "groupsPlaceholder": "t.ex. grupper",
+        "sessionDuration": "Sessionens längd (timmar)",
+        "sessionDurationPlaceholder": "Systemstandard",
+        "sessionDurationHint": "Hur länge OIDC-användare är inloggade. Lämna tomt för att använda systemets standardvärde.",
+        "backchannelLogoutUri": "URI för utloggning från bakkanalen",
+        "backchannelLogoutHint": "Konfigurera denna URI i din OIDC-leverantör för att aktivera serverinitierad sessionsåterkallning."
     },
     "provisioning": {
         "sectionTitle": "Användarprovisionering",
@@ -51,7 +58,9 @@
         "defaultPerms": "Standardbehörigheter",
         "readBooks": "Läsa böcker",
         "defaultLibraryAccess": "Standard biblioteksåtkomst",
-        "selectLibraries": "Välj bibliotek som nya användare kan komma åt"
+        "selectLibraries": "Välj bibliotek som nya användare kan komma åt",
+        "linkLocalLabel": "Länka befintliga lokala konton",
+        "linkLocalDesc": "När det är aktiverat kommer befintliga lokalt skapade användare automatiskt att länkas till sin OIDC-identitet vid första OIDC-inloggningen om användarnamnen matchar. När det är inaktiverat kan endast användare som ursprungligen skapades via OIDC matchas med användarnamn."
     },
     "perms": {
         "uploadBooks": "Ladda upp böcker",
