@@ -29,7 +29,7 @@
         "readingDna": "Lese-DNA-Profil",
         "readingHabits": "Lesegewohnheiten-Analyse",
         "bookFlow": "Buch Flow",
-        "publicationEra": "Veröffentlichungszeitraum im Vergleich zur Bewertung",
+        "publicationEra": "Veröffentlichungszeitraum vs. Bewertung",
         "readingDebt": "Leseschuld Wasserfall",
         "sessionArchetypes": "Sitzungs-Archetypen"
     },
@@ -505,26 +505,26 @@
         "tooltip": "Jeder Monat zeigt die hinzugefügten Bücher (rot) und die fertig gelesenen Bücher (grün) der letzten 12 Monate an. Die gelbe Linie zeigt Ihren aktuellen Rückstand an, also die kumulierte Differenz zwischen hinzugefügten und fertig gelesenen Büchern. Eine ansteigende Linie bedeutet, dass Ihr Stapel ungelesener Bücher wächst."
     },
     "publicationEra": {
-        "noDataHint": "",
+        "noDataHint": "Bewerten Sie Bücher mit Metadaten zum Erscheinungsdatum, um Vergleiche zwischen verschiedenen Epochen zu sehen.",
         "title": "Veröffentlichungszeitraum im Vergleich zur Bewertung",
         "tooltip": "Jede Linie repräsentiert ein Jahrzehnt der Veröffentlichung und zeigt, wie viele Bücher aus dieser Zeit Sie in den einzelnen Bewertungsbereichen eingestuft haben. Vergleichen Sie die Linien, um zu sehen, welche Jahrzehnte Sie am höchsten bewerten. Dies hilft Ihnen dabei, herauszufinden, ob Sie klassische oder zeitgenössische Werke bevorzugen.",
-        "noData": "",
+        "noData": "Nicht genügend bewertete Bücher mit Veröffentlichungsdatum.",
         "description": "Welche Publikationsjahrzehnte schätzen Sie am meisten",
         "bestDecade": "Beste Dekade",
         "avgRating": "Durchschnittliche Bewertung",
         "booksRated": "Bewertete Bücher"
     },
     "sessionArchetypes": {
-        "archetype_afternoon": "",
-        "noData": "",
-        "title": "",
-        "tooltip": "",
-        "dominantType": "",
-        "archetype_morning": "",
-        "archetype_evening": "",
-        "description": "",
-        "noDataHint": "",
-        "archetype_night": "",
-        "sessions": ""
+        "archetype_afternoon": "Nachmittags-Leser",
+        "noData": "Für dieses Jahr wurden keine Lese-Sitzungen gefunden.",
+        "title": "Sitzungs-Archetypen",
+        "tooltip": "Jeder Punkt stellt eine Lesesitzung dar, die nach Tageszeit (X) und Dauer in Minuten (Y) aufgetragen und nach Wochentagen farblich gekennzeichnet ist. Natürliche Cluster zeigen Ihre Lesegewohnheiten, wie beispielsweise kurze Leseeinheiten am Morgen oder ausführliches Lesen am Abend.",
+        "dominantType": "Dominierender Typ",
+        "archetype_morning": "Morgens-Leser",
+        "archetype_evening": "Abends-Leser",
+        "description": "Ihre Lesegewohnheiten nach Zeit und Dauer",
+        "noDataHint": "Lese-Sitzungen erfassen, um Ihre Sitzungs-Archetypen zu entdecken.",
+        "archetype_night": "Nachteule",
+        "sessions": "Sitzungen"
     }
 }
