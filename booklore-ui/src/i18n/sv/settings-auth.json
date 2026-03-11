@@ -86,6 +86,22 @@
     "groupMapping": {
         "sectionTitle": "Gruppmappning",
         "sectionDesc": "Mappa OIDC-leverantörsgrupper till Booklore-behörigheter och biblioteksåtkomst. Användarnas behörigheter synkroniseras baserat på deras gruppmedlemskap.",
-        "syncModeLabel": "Gruppsynksläge"
+        "syncModeLabel": "Gruppsynksläge",
+        "syncModeHint": "Styr hur OIDC-grupper synkroniseras med användarbehörigheter vid inloggning.",
+        "addMapping": "Lägg till mappning",
+        "colGroupClaim": "Gruppanspråk",
+        "colAdmin": "Admin",
+        "colPermissions": "Behörigheter",
+        "colLibraries": "Bibliotek",
+        "colDescription": "Beskrivning",
+        "addTitle": "Lägg till gruppmappning",
+        "editTitle": "Redigera gruppmappning",
+        "groupClaimLabel": "Gruppanspråksvärde",
+        "groupClaimPlaceholder": "t.ex. booklore-admins",
+        "descriptionLabel": "Beskrivning",
+        "descriptionPlaceholder": "Frivillig beskrivning",
+        "adminLabel": "Beviljandeadmin",
+        "permissionsLabel": "Behörigheter",
+        "librariesLabel": "Biblioteksåtkomst"
     }
 }
