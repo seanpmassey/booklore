@@ -131,7 +131,8 @@
             "audiobookUploadFailed": "Beim Hochladen des Hörbuch-Covers ist ein Fehler aufgetreten",
             "fileMetadataLoaded": "Metadaten aus Buchdatei geladen. Überprüfen und speichern.",
             "fileMetadataFailed": "Metadaten konnten nicht aus der Buchdatei extrahiert werden"
-        }
+        },
+        "writtenToFileTooltip": "Dieses Feld wird in die physische Datei geschrieben"
     },
     "picker": {
         "loadingMetadata": "Vollständige Metadaten werden geladen...",
