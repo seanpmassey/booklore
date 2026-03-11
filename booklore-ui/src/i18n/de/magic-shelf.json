@@ -80,7 +80,7 @@
         "seriesName": "Serienname",
         "seriesNumber": "Seriennummer",
         "seriesTotal": "Bücher in der Serie",
-        "fileSize": "Dateigröße (KB)",
+        "fileSize": "Dateigröße (Kb)",
         "fileType": "Dateityp",
         "subtitle": "Untertitel",
         "amazonRating": "Amazon-Bewertung",
