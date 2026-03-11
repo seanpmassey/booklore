@@ -88,7 +88,13 @@
         "insightPeakDecade": "Spitzenjahrzehnt",
         "insightPeakDecadeBooks": "{{ count }} Bücher",
         "insightDecadesCovered": "Abgedeckte Jahrzehnte",
-        "insightDifferentEras": "verschiedene Epochen"
+        "insightDifferentEras": "verschiedene Epochen",
+        "insightGoldenEra": "Goldene Ära",
+        "insightGoldenEraRange": "{{ count }} Bücher",
+        "insightMostCommonYear": "Häufigstes Jahr",
+        "insightMostCommonYearBooks": "{{ count }} Bücher",
+        "insightRarityScore": "Seltenheitswert",
+        "insightRarePicks": "seltene Fundstücke"
     },
     "publicationTrend": {
         "title": "Veröffentlichungstrend",
